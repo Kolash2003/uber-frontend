@@ -1,5 +1,50 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Running the full stack
+
+The app talks to two services:
+
+| Service | Dir | Port | URL |
+| --- | --- | --- | --- |
+| API backend (Express + Prisma/Postgres) | `../uberBackend` | 4000 | `http://localhost:4000/api` |
+| Socket relay (Socket.IO) | `../uberSocketServer` | 4001 | `http://localhost:4001` |
+| Frontend (this app) | `.` | 3000 | `http://localhost:3000` |
+
+**1. Start the backend** (requires the Neon `DATABASE_URL` in `../uberBackend/.env`):
+
+```bash
+cd ../uberBackend
+npm run db:push   # first time only — syncs the Prisma schema
+npm run dev
+```
+
+**2. Start the socket relay:**
+
+```bash
+cd ../uberSocketServer
+npm run dev
+```
+
+**3. Start the frontend:**
+
+```bash
+cp .env.example .env.local   # optional; defaults already point at :4000/:4001
+npm run dev
+```
+
+Sign up one rider (`/signup`) and one driver (`/signup?role=driver`). Put the driver
+online (their location is reported to the backend), request a ride from the rider app,
+and accept it in the driver app — the rider sees the driver matched, live location and
+ETA over the socket relay, and can rate the driver after the trip completes.
+
+OTP login is dev-mode: `POST /auth/request-otp` returns the code in `devCode`, and any
+code works while the backend `.env` has `DEV_OTP=123456` set.
+
+### Mock mode
+
+To preview the UI without the servers, set `NEXT_PUBLIC_USE_MOCK_API=true` in
+`.env.local`. The app then uses the in-memory mock API and a simulated socket.
+
 ## Getting Started
 
 First, run the development server:
