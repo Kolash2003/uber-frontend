@@ -37,8 +37,10 @@ online (their location is reported to the backend), request a ride from the ride
 and accept it in the driver app — the rider sees the driver matched, live location and
 ETA over the socket relay, and can rate the driver after the trip completes.
 
-OTP login is dev-mode: `POST /auth/request-otp` returns the code in `devCode`, and any
-code works while the backend `.env` has `DEV_OTP=123456` set.
+OTP login emails the code to the address on the account via Gmail SMTP. Set
+`GMAIL_USER` and `GMAIL_APP_PASSWORD` (a Google App Password) in the backend `.env`
+to enable sending. If those are unset, `POST /auth/request-otp` falls back to dev-mode
+and returns the code in `devCode`.
 
 ### Mock mode
 

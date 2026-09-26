@@ -64,8 +64,10 @@ function VerifyOtpContent() {
     if (cooldown > 0 || resending) return;
     setResending(true);
     try {
-      await api.post("/auth/request-otp", { phoneNumber: phone });
-      toast.success("Code resent");
+      const res = await api.post<{ emailHint?: string }>("/auth/request-otp", { phoneNumber: phone });
+      toast.success("Code resent", {
+        description: res.emailHint ? `We emailed ${res.emailHint}` : undefined,
+      });
       setCooldown(30);
     } finally {
       setResending(false);
@@ -87,7 +89,8 @@ function VerifyOtpContent() {
       <div className="space-y-2 pb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Enter the code</h1>
         <p className="text-sm text-muted-foreground">
-          Sent to <span className="font-medium text-foreground">{phone}</span>.
+          Sent to the email on file for{" "}
+          <span className="font-medium text-foreground">{phone}</span>.
         </p>
       </div>
 

@@ -37,6 +37,7 @@ function LoginContent() {
   const next = params.get("next");
   const [stage, setStage] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
+  const [emailHint, setEmailHint] = useState("");
   const [otp, setOtp] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const setAuth = useAuthStore((s) => s.setUser);
@@ -50,10 +51,17 @@ function LoginContent() {
   async function onSubmitPhone(values: PhoneFormValues) {
     setSubmitting(true);
     try {
-      await api.post("/auth/request-otp", { phoneNumber: values.phoneNumber });
+      const res = await api.post<{ emailHint?: string }>("/auth/request-otp", {
+        phoneNumber: values.phoneNumber,
+      });
       setPhone(values.phoneNumber);
+      setEmailHint(res.emailHint ?? "");
       setStage("otp");
-      toast.success("Code sent", { description: `We texted ${values.phoneNumber}` });
+      toast.success("Code sent", {
+        description: res.emailHint
+          ? `We emailed ${res.emailHint}`
+          : "Check your email for the code",
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't send a code");
     } finally {
@@ -93,7 +101,7 @@ function LoginContent() {
               Sign in to Ride
             </h1>
             <p className="text-sm text-muted-foreground">
-              We&apos;ll text you a code to verify your number.
+              We&apos;ll email a code to the address on your account.
             </p>
           </div>
 
@@ -131,7 +139,8 @@ function LoginContent() {
           <div className="space-y-2 pb-6">
             <h1 className="text-2xl font-semibold tracking-tight">Enter the code</h1>
             <p className="text-sm text-muted-foreground">
-              Sent to <span className="font-medium text-foreground">{phone}</span>.{" "}
+              Sent to{" "}
+              <span className="font-medium text-foreground">{emailHint || phone}</span>.{" "}
               <button
                 type="button"
                 className="underline-offset-2 hover:underline"
@@ -156,7 +165,7 @@ function LoginContent() {
                 ))}
               </InputOTPGroup>
             </InputOTP>
-            <FieldDescription>For the demo, enter any 6 digits.</FieldDescription>
+            <FieldDescription>Enter the 6-digit code from the email.</FieldDescription>
           </Field>
           <div className="mt-auto pt-6">
             <Button
