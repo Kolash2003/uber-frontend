@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { LogOutIcon, StarIcon, CarIcon, BadgeCheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { authClient } from "@/lib/auth-client";
 
 export default function DriverProfilePage() {
   const router = useRouter();
@@ -19,9 +20,9 @@ export default function DriverProfilePage() {
     trips.filter((t) => t.rating != null).reduce((s, t) => s + (t.rating ?? 0), 0) /
     Math.max(trips.filter((t) => t.rating != null).length, 1);
 
-  function onSignOut() {
+  async function onSignOut() {
+    await authClient.signOut();
     signOut();
-    document.cookie = "uber-ride-auth=; path=/; max-age=0";
     document.cookie = "uber-ride-role=; path=/; max-age=0";
     toast("Signed out");
     router.push("/login");
@@ -42,7 +43,11 @@ export default function DriverProfilePage() {
             {user?.firstName} {user?.lastName}
             <BadgeCheckIcon className="size-4 text-status-completed" />
           </div>
-          <div className="text-sm text-muted-foreground">{user?.phoneNumber}</div>
+          {(user?.phoneNumber || user?.email) && (
+            <div className="text-sm text-muted-foreground">
+              {user?.phoneNumber ?? user?.email}
+            </div>
+          )}
           <div className="mt-1 flex items-center gap-1 text-xs">
             <StarIcon className="size-3 fill-status-searching text-status-searching" />
             <span className="font-medium">{avgRating.toFixed(2)}</span>

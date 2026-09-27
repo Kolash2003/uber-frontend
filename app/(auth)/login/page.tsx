@@ -6,22 +6,18 @@ import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, FieldLabel, FieldDescription, FieldError } from "@/components/ui/field";
+import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { api } from "@/lib/api/client";
-import { useAuthStore } from "@/stores/auth-store";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { ArrowRightIcon, Loader2Icon } from "lucide-react";
 
-const phoneSchema = z.object({
-  phoneNumber: z
-    .string()
-    .min(8, "Enter a valid phone number")
-    .regex(/^\+?[0-9\s-()]+$/, "Use digits, spaces, +, - or ()"),
+const schema = z.object({
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(1, "Password is required"),
 });
 
-type PhoneFormValues = z.infer<typeof phoneSchema>;
+type FormValues = z.infer<typeof schema>;
 
 export default function LoginPage() {
   return (
@@ -35,54 +31,42 @@ function LoginContent() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next");
-  const [stage, setStage] = useState<"phone" | "otp">("phone");
-  const [phone, setPhone] = useState("");
-  const [emailHint, setEmailHint] = useState("");
-  const [otp, setOtp] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const setAuth = useAuthStore((s) => s.setUser);
-  const setSession = useAuthStore((s) => s.setSession);
 
-  const form = useForm<PhoneFormValues>({
-    resolver: zodResolver(phoneSchema),
-    defaultValues: { phoneNumber: "" },
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: "", password: "" },
   });
 
-  async function onSubmitPhone(values: PhoneFormValues) {
+  async function onSubmit(values: FormValues) {
     setSubmitting(true);
     try {
-      const res = await api.post<{ emailHint?: string }>("/auth/request-otp", {
-        phoneNumber: values.phoneNumber,
+      const { data, error } = await authClient.signIn.email({
+        email: values.email,
+        password: values.password,
       });
-      setPhone(values.phoneNumber);
-      setEmailHint(res.emailHint ?? "");
-      setStage("otp");
-      toast.success("Code sent", {
-        description: res.emailHint
-          ? `We emailed ${res.emailHint}`
-          : "Check your email for the code",
-      });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't send a code");
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
-  async function onSubmitOtp() {
-    if (otp.length !== 6) return;
-    setSubmitting(true);
-    try {
-      const res = await api.post<{ token: string; user: Parameters<typeof setAuth>[0] }>(
-        "/auth/verify-otp",
-        { phoneNumber: phone, code: otp }
-      );
-      setAuth(res.user);
-      setSession(res.token);
+      if (error) {
+        if (error.code === "EMAIL_NOT_VERIFIED") {
+          await authClient.sendVerificationEmail({
+            email: values.email,
+            callbackURL: "/email-verified",
+          });
+          toast.error("Verify your email", {
+            description: "We sent you a new verification link.",
+          });
+          return;
+        }
+        toast.error(error.message ?? "Couldn't sign you in");
+        return;
+      }
+
+      const role = (data?.user as { role?: string } | undefined)?.role ?? "rider";
       toast.success("Welcome back");
-      router.push(next ?? "/home");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Invalid code");
+      router.push(next ?? (role === "driver" ? "/driver/dashboard" : "/home"));
+      router.refresh();
+    } catch {
+      toast.error("Couldn't reach the server. Try again.");
     } finally {
       setSubmitting(false);
     }
@@ -90,95 +74,50 @@ function LoginContent() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {stage === "phone" ? (
-        <form
-          onSubmit={form.handleSubmit(onSubmitPhone)}
-          className="flex flex-1 flex-col"
-          noValidate
-        >
-          <div className="space-y-2 pb-6">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Sign in to Ride
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              We&apos;ll email a code to the address on your account.
-            </p>
-          </div>
-
-          <Field>
-            <FieldLabel htmlFor="phone">Phone number</FieldLabel>
-            <Input
-              id="phone"
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              placeholder="+1 415 555 0123"
-              {...form.register("phoneNumber")}
-            />
-            <FieldDescription>
-              Used to match you with your rides and receipt.
-            </FieldDescription>
-            <FieldError>{form.formState.errors.phoneNumber?.message}</FieldError>
-          </Field>
-
-          <div className="mt-auto pt-6">
-            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-              {submitting ? (
-                <Loader2Icon className="animate-spin" />
-              ) : (
-                <>
-                  Continue
-                  <ArrowRightIcon />
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <div className="flex flex-1 flex-col">
-          <div className="space-y-2 pb-6">
-            <h1 className="text-2xl font-semibold tracking-tight">Enter the code</h1>
-            <p className="text-sm text-muted-foreground">
-              Sent to{" "}
-              <span className="font-medium text-foreground">{emailHint || phone}</span>.{" "}
-              <button
-                type="button"
-                className="underline-offset-2 hover:underline"
-                onClick={() => setStage("phone")}
-              >
-                Edit
-              </button>
-            </p>
-          </div>
-          <Field>
-            <FieldLabel htmlFor="otp">Verification code</FieldLabel>
-            <InputOTP
-              id="otp"
-              maxLength={6}
-              value={otp}
-              onChange={setOtp}
-              aria-label="6-digit verification code"
-            >
-              <InputOTPGroup className="w-full">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <InputOTPSlot key={i} index={i} className="flex-1" />
-                ))}
-              </InputOTPGroup>
-            </InputOTP>
-            <FieldDescription>Enter the 6-digit code from the email.</FieldDescription>
-          </Field>
-          <div className="mt-auto pt-6">
-            <Button
-              size="lg"
-              className="w-full"
-              disabled={otp.length !== 6 || submitting}
-              onClick={onSubmitOtp}
-            >
-              {submitting ? <Loader2Icon className="animate-spin" /> : "Verify and continue"}
-            </Button>
-          </div>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-5" noValidate>
+        <div className="space-y-2 pb-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Sign in to Ride</h1>
+          <p className="text-sm text-muted-foreground">
+            Enter your email and password to continue.
+          </p>
         </div>
-      )}
+
+        <Field>
+          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
+          <FieldError>{form.formState.errors.email?.message}</FieldError>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            {...form.register("password")}
+          />
+          <FieldError>{form.formState.errors.password?.message}</FieldError>
+        </Field>
+
+        <div className="mt-auto pt-6">
+          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+            {submitting ? (
+              <Loader2Icon className="animate-spin" />
+            ) : (
+              <>
+                Sign in
+                <ArrowRightIcon />
+              </>
+            )}
+          </Button>
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            New to Ride?{" "}
+            <a className="font-medium text-foreground underline-offset-4 hover:underline" href="/signup">
+              Create an account
+            </a>
+          </p>
+        </div>
+      </form>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useAuthStore } from "@/stores/auth-store";
+import { useSyncSession } from "@/hooks/use-sync-session";
 import { useSocket } from "@/lib/socket/client";
 import { useActiveTripStore } from "@/stores/active-trip-store";
 import { RiderBottomNav } from "@/components/shared/rider-bottom-nav";
@@ -12,13 +13,13 @@ import { useDriverMarkerInterpolator } from "@/hooks/use-driver-marker-interpola
 export default function RiderLayout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
 
+  useSyncSession();
   useDriverMarkerInterpolator();
 
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (user) {
       document.cookie = `uber-ride-role=${user.role}; path=/; max-age=86400`;
-      document.cookie = `uber-ride-auth=1; path=/; max-age=86400`;
     }
   }, [user]);
 

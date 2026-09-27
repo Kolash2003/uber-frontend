@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,20 +13,30 @@ import {
   FieldError,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { api } from "@/lib/api/client";
-import { useAuthStore } from "@/stores/auth-store";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
-import { ArrowRightIcon, Loader2Icon } from "lucide-react";
+import { ArrowRightIcon, Loader2Icon, MailCheckIcon } from "lucide-react";
 
-const schema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email"),
-  phoneNumber: z
-    .string()
-    .min(8, "Enter a valid phone number")
-    .regex(/^\+?[0-9\s-()]+$/, "Use digits, spaces, +, - or ()"),
-});
+const schema = z
+  .object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Invalid email"),
+    phoneNumber: z
+      .string()
+      .trim()
+      .refine(
+        (v) => v === "" || /^\+?[0-9\s-()]{8,}$/.test(v),
+        "Enter a valid phone number"
+      )
+      .optional(),
+    password: z.string().min(8, "Use at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((v) => v.password === v.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -39,12 +49,10 @@ export default function SignupPage() {
 }
 
 function SignupContent() {
-  const router = useRouter();
   const params = useSearchParams();
-  const role = (params.get("role") ?? "rider") as "rider" | "driver";
+  const role = params.get("role") === "driver" ? "driver" : "rider";
   const [submitting, setSubmitting] = useState(false);
-  const setAuth = useAuthStore((s) => s.setUser);
-  const setSession = useAuthStore((s) => s.setSession);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -53,25 +61,76 @@ function SignupContent() {
       lastName: "",
       email: "",
       phoneNumber: "",
+      password: "",
+      confirmPassword: "",
     },
   });
 
   async function onSubmit(values: FormValues) {
     setSubmitting(true);
     try {
-      const res = await api.post<{ token: string; user: { id: string; phoneNumber: string; firstName: string; lastName: string; email?: string; role: "rider" | "driver" } }>(
-        "/auth/signup",
-        { ...values, role }
-      );
-      setAuth({ ...res.user, role });
-      setSession(res.token);
-      toast.success(`Welcome, ${values.firstName}`);
-      router.push(role === "driver" ? "/driver/dashboard" : "/home");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't create your account");
+      const { error } = await authClient.signUp.email({
+        email: values.email,
+        password: values.password,
+        name: `${values.firstName} ${values.lastName}`.trim(),
+        firstName: values.firstName,
+        lastName: values.lastName,
+        phoneNumber: values.phoneNumber?.trim() || undefined,
+        role,
+        callbackURL: "/email-verified",
+      });
+
+      if (error) {
+        toast.error(error.message ?? "Couldn't create your account");
+        return;
+      }
+
+      setSentTo(values.email);
+      toast.success("Check your email", {
+        description: "We sent you a link to verify your account.",
+      });
+    } catch {
+      toast.error("Couldn't reach the server. Try again.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (sentTo) {
+    return (
+      <div className="flex flex-1 flex-col items-start justify-center gap-4 text-center">
+        <div className="mx-auto grid size-12 place-items-center rounded-full bg-secondary">
+          <MailCheckIcon className="size-6" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Verify your email</h1>
+          <p className="text-sm text-muted-foreground">
+            We sent a verification link to{" "}
+            <span className="font-medium text-foreground">{sentTo}</span>. Click it to
+            activate your account, then sign in.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="mx-auto"
+          onClick={() =>
+            authClient.sendVerificationEmail({
+              email: sentTo,
+              callbackURL: "/email-verified",
+            })
+          }
+        >
+          Resend link
+        </Button>
+        <a
+          className="mx-auto text-xs font-medium text-foreground underline-offset-4 hover:underline"
+          href="/login"
+        >
+          Back to sign in
+        </a>
+      </div>
+    );
   }
 
   return (
@@ -110,8 +169,30 @@ function SignupContent() {
         <Field>
           <FieldLabel htmlFor="phoneNumber">Phone number</FieldLabel>
           <Input id="phoneNumber" type="tel" autoComplete="tel" {...form.register("phoneNumber")} />
-          <FieldDescription>We&apos;ll send a verification code.</FieldDescription>
+          <FieldDescription>Optional — used for ride updates and receipts.</FieldDescription>
           <FieldError>{form.formState.errors.phoneNumber?.message}</FieldError>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            {...form.register("password")}
+          />
+          <FieldError>{form.formState.errors.password?.message}</FieldError>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            {...form.register("confirmPassword")}
+          />
+          <FieldError>{form.formState.errors.confirmPassword?.message}</FieldError>
         </Field>
 
         <div className="mt-auto pt-2">

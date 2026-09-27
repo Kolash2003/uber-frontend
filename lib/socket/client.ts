@@ -46,7 +46,6 @@ class MockSocket {
   private listeners = new Map<string, Set<(p: unknown) => void>>();
   private status: "connecting" | "connected" | "disconnected" = "disconnected";
   private simulationTimers: Array<ReturnType<typeof setInterval> | ReturnType<typeof setTimeout>> = [];
-  private authToken: string | null = null;
 
   constructor() {
     this.connect();
@@ -66,10 +65,6 @@ class MockSocket {
     this.status = "disconnected";
     this.notifyStatus();
     this.clearSimulations();
-  }
-
-  setAuthToken(token: string | null) {
-    this.authToken = token;
   }
 
   send(event: string, payload: unknown) {
@@ -197,7 +192,6 @@ export function useSocket(handlers: SocketEventHandlers = {}): SocketState {
   const queryClient = useQueryClient();
   const setConnectivity = useConnectivityStore((s) => s.setState);
   const incrementAttempts = useConnectivityStore((s) => s.incrementAttempts);
-  const token = useAuthStore((s) => s.sessionToken);
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
@@ -343,10 +337,6 @@ export function useSocket(handlers: SocketEventHandlers = {}): SocketState {
       }
     };
   }, [user?.id, user?.role]);
-
-  useEffect(() => {
-    if (USE_MOCK) getMockSocket()?.setAuthToken(token);
-  }, [token]);
 
   return useMemo(
     () => ({

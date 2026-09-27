@@ -10,6 +10,7 @@ import { ArrowRightIcon, BriefcaseIcon, CreditCardIcon, HomeIcon, LogOutIcon, Ma
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
 import { toast } from "sonner";
+import { authClient } from "@/lib/auth-client";
 
 const PLACE_ICONS = { home: HomeIcon, work: BriefcaseIcon, recent: MapPinIcon } as const;
 
@@ -22,9 +23,9 @@ export default function RiderProfilePage() {
   const { data: trips = [] } = useTrips();
   const totalTrips = trips.length;
 
-  function onSignOut() {
+  async function onSignOut() {
+    await authClient.signOut();
     signOut();
-    document.cookie = "uber-ride-auth=; path=/; max-age=0";
     document.cookie = "uber-ride-role=; path=/; max-age=0";
     toast("Signed out");
     router.push("/login");
@@ -44,7 +45,9 @@ export default function RiderProfilePage() {
           <div className="text-lg font-semibold">
             {user?.firstName} {user?.lastName}
           </div>
-          <div className="text-sm text-muted-foreground">{user?.phoneNumber}</div>
+          {user?.phoneNumber && (
+            <div className="text-sm text-muted-foreground">{user.phoneNumber}</div>
+          )}
           {user?.email && (
             <div className="text-xs text-muted-foreground">{user.email}</div>
           )}

@@ -6,9 +6,17 @@ const DRIVER_PREFIXES = ["/driver"];
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const role = request.cookies.get("uber-ride-role")?.value;
-  const sessionToken = request.cookies.get("uber-ride-auth")?.value;
+  const sessionToken = request.cookies
+    .getAll()
+    .some(
+      ({ name }) =>
+        name === "better-auth.session_token" ||
+        name === "__Secure-better-auth.session_token" ||
+        name.startsWith("better-auth.session_token.") ||
+        name.startsWith("__Secure-better-auth.session_token.")
+    );
 
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/verify-otp");
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
   const isRiderPath = RIDER_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const isDriverPath = DRIVER_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 

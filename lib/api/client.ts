@@ -7,7 +7,6 @@ import {
   SAVED_PAYMENT_METHODS,
   SAVED_PLACES,
 } from "@/lib/mock/data";
-import { useAuthStore } from "@/stores/auth-store";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -27,12 +26,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     return (await handler(path)) as T;
   }
-  const token = useAuthStore.getState().sessionToken;
   const res = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
     ...init,
@@ -67,38 +64,6 @@ export const api = {
 };
 
 const mockRoutes = {
-  "/auth/request-otp": async () => {
-    await wait(500);
-    return { ok: true };
-  },
-  "/auth/verify-otp": async () => {
-    await wait(700);
-    return {
-      token: "mock-jwt-token",
-      user: {
-        id: "user_001",
-        phoneNumber: "+14155551234",
-        firstName: "Aneesh",
-        lastName: "R",
-        email: "aneesh@example.com",
-        role: "rider" as const,
-      },
-    };
-  },
-  "/auth/signup": async () => {
-    await wait(800);
-    return {
-      token: "mock-jwt-token",
-      user: {
-        id: "user_001",
-        phoneNumber: "+14155551234",
-        firstName: "Aneesh",
-        lastName: "R",
-        email: "aneesh@example.com",
-        role: "rider" as const,
-      },
-    };
-  },
   "/me": async () => {
     await wait(150);
     return {

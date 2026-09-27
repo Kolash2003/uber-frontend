@@ -28,7 +28,7 @@ npm run dev
 **3. Start the frontend:**
 
 ```bash
-cp .env.example .env.local   # optional; defaults already point at :4000/:4001
+cp .env.example .env.local   # then fill in DATABASE_URL + BETTER_AUTH_SECRET + Gmail creds
 npm run dev
 ```
 
@@ -37,10 +37,22 @@ online (their location is reported to the backend), request a ride from the ride
 and accept it in the driver app — the rider sees the driver matched, live location and
 ETA over the socket relay, and can rate the driver after the trip completes.
 
-OTP login emails the code to the address on the account via Gmail SMTP. Set
-`GMAIL_USER` and `GMAIL_APP_PASSWORD` (a Google App Password) in the backend `.env`
-to enable sending. If those are unset, `POST /auth/request-otp` falls back to dev-mode
-and returns the code in `devCode`.
+### Authentication (Better Auth)
+
+Auth is handled by [Better Auth](https://better-auth.com), running inside this Next.js
+app at `/api/auth/*`. It uses the **same Postgres database** as `uberBackend` (via the
+shared `DATABASE_URL`) and the auth tables (`User`, `Session`, `Account`,
+`Verification`) are defined in `../uberBackend/prisma/schema.prisma`.
+
+Sign-in/sign-up is **email + password only**; phone number is an optional profile
+field. Email verification is required: on sign-up Better Auth sends a verification
+link via Gmail SMTP (`GMAIL_USER` + `GMAIL_APP_PASSWORD`, a Google App Password) and
+the account can't sign in until the link is opened. If Gmail creds are unset, the
+verification URL is logged to the Next.js server console instead.
+
+The Express backend doesn't issue tokens; it validates the Better Auth session cookie
+by forwarding it to `/api/auth/get-session` (set `BETTER_AUTH_URL`/`FRONTEND_URL` in
+`../uberBackend/.env`).
 
 ### Mock mode
 
