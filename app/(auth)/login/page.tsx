@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { ArrowRightIcon, Loader2Icon } from "lucide-react";
+import { RoleSelector, type AccountRole } from "@/components/shared/role-selector";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -31,6 +32,9 @@ function LoginContent() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next");
+  const [role, setRole] = useState<AccountRole>(
+    params.get("role") === "driver" ? "driver" : "rider"
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
@@ -61,9 +65,20 @@ function LoginContent() {
         return;
       }
 
-      const role = (data?.user as { role?: string } | undefined)?.role ?? "rider";
-      toast.success("Welcome back");
-      router.push(next ?? (role === "driver" ? "/driver/dashboard" : "/home"));
+      const accountRole = (data?.user as { role?: string } | undefined)?.role ?? "rider";
+      const home = accountRole === "driver" ? "/driver/dashboard" : "/home";
+
+      if (accountRole !== role) {
+        toast.info(`This account is registered as a ${accountRole}`, {
+          description: `Taking you to the ${accountRole} app instead.`,
+        });
+      } else {
+        toast.success("Welcome back");
+      }
+
+      // `next` came from a route for the selected role, so it is only safe to
+      // honour when the account actually has that role.
+      router.push(accountRole === role && next ? next : home);
       router.refresh();
     } catch {
       toast.error("Couldn't reach the server. Try again.");
@@ -81,6 +96,8 @@ function LoginContent() {
             Enter your email and password to continue.
           </p>
         </div>
+
+        <RoleSelector value={role} onChange={setRole} />
 
         <Field>
           <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -121,7 +138,10 @@ function LoginContent() {
           </Button>
           <p className="mt-3 text-center text-xs text-muted-foreground">
             New to Ride?{" "}
-            <a className="font-medium text-foreground underline-offset-4 hover:underline" href="/signup">
+            <a
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+              href={role === "driver" ? "/signup?role=driver" : "/signup"}
+            >
               Create an account
             </a>
           </p>

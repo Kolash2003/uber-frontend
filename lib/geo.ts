@@ -1,4 +1,6 @@
 import type { LatLng } from "@/types";
+import { api } from "@/lib/api/client";
+import { useAuthStore } from "@/stores/auth-store";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -84,5 +86,34 @@ export async function reverseGeocode(
     return data.features?.[0]?.place_name ?? undefined;
   } catch {
     return undefined;
+  }
+}
+
+/** Fetch the current position, save it to the account, and update the store. */
+export async function captureLocation(): Promise<LatLng> {
+  const { lat, lng } = await getBrowserLocation();
+  const address = await reverseGeocode(lat, lng);
+  await api.post("/me/location", { latitude: lat, longitude: lng, address });
+  const { user, setUser } = useAuthStore.getState();
+  if (user) {
+    setUser({
+      ...user,
+      hasLocation: true,
+      lastLat: lat,
+      lastLng: lng,
+      lastAddress: address ?? user.lastAddress,
+    });
+  }
+  return { lat, lng };
+}
+
+/** "granted" without prompting, so callers can refresh silently. */
+export async function hasGeolocationPermission(): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.permissions) return false;
+  try {
+    const status = await navigator.permissions.query({ name: "geolocation" });
+    return status.state === "granted";
+  } catch {
+    return false;
   }
 }

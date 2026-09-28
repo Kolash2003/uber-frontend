@@ -10,7 +10,7 @@ type ConnectivityStateStore = {
 };
 
 export const useConnectivityStore = create<ConnectivityStateStore>((set) => ({
-  state: "offline",
+  state: "reconnecting",
   lastConnectedAt: null,
   reconnectAttempts: 0,
   setState: (state) =>

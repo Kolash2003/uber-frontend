@@ -73,11 +73,14 @@ export type Trip = {
   paymentMethodId: string;
   driver?: Driver & { vehicle: Vehicle; location: LatLng };
   etaSeconds?: number;
+  createdAt?: string;
   startedAt?: string;
   completedAt?: string;
   rating?: number;
   tip?: number;
   routePolyline?: LatLng[];
+  distanceKm?: number;
+  durationMinutes?: number;
 };
 
 export type FareEstimate = {

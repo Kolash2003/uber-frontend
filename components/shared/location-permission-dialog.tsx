@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,40 +10,38 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api/client";
-import { getBrowserLocation, reverseGeocode } from "@/lib/geo";
+import { captureLocation, hasGeolocationPermission } from "@/lib/geo";
 import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "sonner";
 import { Loader2Icon, MapPinIcon } from "lucide-react";
 
 export function LocationPermissionDialog() {
   const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
   const [dismissed, setDismissed] = useState(false);
+  const [granted, setGranted] = useState(false);
+  const refreshed = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const open = Boolean(user) && !user?.hasLocation && !dismissed;
+  // Permission already granted: refresh silently instead of asking again.
+  useEffect(() => {
+    if (!user || refreshed.current) return;
+    refreshed.current = true;
+    hasGeolocationPermission().then((ok) => {
+      if (!ok) return;
+      setGranted(true);
+      captureLocation().catch(() => {});
+    });
+  }, [user]);
+
+  const open = Boolean(user) && !user?.hasLocation && !dismissed && !granted;
 
   async function onAllow() {
     if (!user) return;
     setBusy(true);
     setError(null);
     try {
-      const { lat, lng } = await getBrowserLocation();
-      const address = await reverseGeocode(lat, lng);
-      await api.post("/me/location", {
-        latitude: lat,
-        longitude: lng,
-        address,
-      });
-      setUser({
-        ...user,
-        hasLocation: true,
-        lastLat: lat,
-        lastLng: lng,
-        lastAddress: address ?? user.lastAddress,
-      });
+      await captureLocation();
       toast.success("Location saved");
       setDismissed(true);
     } catch (e) {

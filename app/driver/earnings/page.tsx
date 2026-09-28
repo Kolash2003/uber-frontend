@@ -8,15 +8,21 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowDownToLineIcon, TrendingUpIcon, ClockIcon, ReceiptIcon } from "lucide-react";
+import {
+  ArrowDownToLineIcon,
+  TrendingUpIcon,
+  TrendingDownIcon,
+  ClockIcon,
+  ReceiptIcon,
+} from "lucide-react";
+import { cn } from "cn";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 const chartConfig = {
   earnings: {
     label: "Earnings",
-    color: "var(--status-completed)",
+    color: "var(--brand)",
   },
   trips: {
     label: "Trips",
@@ -30,6 +36,12 @@ export default function DriverEarningsPage() {
   const totalTrips = earnings.reduce((s, e) => s + e.trips, 0);
   const totalMinutes = earnings.reduce((s, e) => s + e.onlineMinutes, 0);
   const avgPerHour = total / Math.max(totalMinutes / 60, 1);
+  const latest = earnings.at(-1)?.earnings;
+  const previous = earnings.at(-2)?.earnings;
+  const deltaPct =
+    latest != null && previous != null && previous > 0
+      ? ((latest - previous) / previous) * 100
+      : null;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-safe">
@@ -43,10 +55,25 @@ export default function DriverEarningsPage() {
           <div className="text-xs uppercase tracking-wide text-muted-foreground">This week</div>
           <div className="mt-1 flex items-baseline gap-2">
             <div className="font-mono text-3xl font-semibold tabular-nums">${total.toFixed(2)}</div>
-            <div className="flex items-center gap-0.5 text-xs font-medium text-status-completed">
-              <TrendingUpIcon className="size-3.5" />
-              <span>+12.4%</span>
-            </div>
+            {deltaPct != null && (
+              <div
+                className={cn(
+                  "flex items-center gap-0.5 text-xs font-medium",
+                  deltaPct >= 0 ? "text-status-completed" : "text-status-cancelled"
+                )}
+                title="Change vs. the previous day"
+              >
+                {deltaPct >= 0 ? (
+                  <TrendingUpIcon className="size-3.5" />
+                ) : (
+                  <TrendingDownIcon className="size-3.5" />
+                )}
+                <span>
+                  {deltaPct >= 0 ? "+" : ""}
+                  {deltaPct.toFixed(1)}%
+                </span>
+              </div>
+            )}
           </div>
           <div className="mt-3 grid grid-cols-3 divide-x">
             <Stat icon={ReceiptIcon} label="Trips" value={String(totalTrips)} />
@@ -56,48 +83,28 @@ export default function DriverEarningsPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="week" className="mb-4">
-        <TabsList>
-          <TabsTrigger value="day">Day</TabsTrigger>
-          <TabsTrigger value="week">Week</TabsTrigger>
-          <TabsTrigger value="month">Month</TabsTrigger>
-        </TabsList>
-        <TabsContent value="week" className="mt-4">
-          {isLoading ? (
-            <Skeleton className="h-56 w-full" />
-          ) : (
-            <Card>
-              <CardContent className="p-3">
-                <ChartContainer config={chartConfig} className="h-56 w-full">
-                  <BarChart data={earnings} margin={{ left: 0, right: 0, top: 8 }}>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 11 }}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 11 }}
-                      width={32}
-                    />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="earnings" fill="var(--color-earnings)" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-        <TabsContent value="day" className="mt-4 text-sm text-muted-foreground">
-          Day view placeholder
-        </TabsContent>
-        <TabsContent value="month" className="mt-4 text-sm text-muted-foreground">
-          Month view placeholder
-        </TabsContent>
-      </Tabs>
+      <div className="mb-4">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Daily breakdown
+        </h2>
+        {isLoading ? (
+          <Skeleton className="h-56 w-full" />
+        ) : (
+          <Card>
+            <CardContent className="p-3">
+              <ChartContainer config={chartConfig} className="h-56 w-full">
+                <BarChart data={earnings} margin={{ left: 0, right: 0, top: 8 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={32} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="earnings" fill="var(--color-earnings)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       <Card>
         <CardContent className="flex items-center justify-between p-4">
@@ -111,7 +118,7 @@ export default function DriverEarningsPage() {
             </div>
           </div>
           <div className="font-mono text-base font-semibold tabular-nums">
-            ${(total - 50).toFixed(2)}
+            ${total.toFixed(2)}
           </div>
         </CardContent>
       </Card>

@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "cn";
 import type { LatLng } from "@/types";
 import { DEFAULT_MAP_CENTER } from "@/lib/mock/data";
+import { useTheme } from "next-themes";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 type Marker = {
@@ -25,6 +26,13 @@ export type MapViewProps = {
 };
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+const MAP_STYLES = {
+  light: "mapbox://styles/mapbox/light-v11",
+  dark: "mapbox://styles/mapbox/dark-v11",
+} as const;
+// Mapbox paint properties are parsed by its own color parser, which predates oklch,
+// so the route colour is a literal matching --map-route in each theme.
+const ROUTE_COLORS = { light: "#111111", dark: "#fafafa" } as const;
 
 function project(point: LatLng, bounds: { min: LatLng; max: LatLng }, size: { w: number; h: number }) {
   const x = ((point.lng - bounds.min.lng) / (bounds.max.lng - bounds.min.lng)) * size.w;
@@ -125,7 +133,7 @@ function MockMapCanvas({
         className="absolute inset-0 transition-transform duration-700 ease-out"
         style={{ transform: `translate3d(${translateX}px, ${translateY}px, 0)` }}
       >
-        <GridBackground bounds={bounds} size={size} />
+        <GridBackground size={size} />
         <svg
           ref={svgRef}
           className="absolute inset-0 h-full w-full"
@@ -168,7 +176,7 @@ function MockMapCanvas({
             {m.kind === "driver" ? (
               <DriverMarker rotation={m.rotation} />
             ) : m.kind === "pickup" ? (
-              <PlaceMarker color="var(--online)" label="Pickup" />
+              <PlaceMarker color="var(--status-online)" label="Pickup" />
             ) : m.kind === "dropoff" ? (
               <PlaceMarker color="var(--destructive)" label="Dropoff" />
             ) : (
@@ -185,13 +193,7 @@ function MockMapCanvas({
   );
 }
 
-function GridBackground({
-  bounds,
-  size,
-}: {
-  bounds: { min: LatLng; max: LatLng };
-  size: { w: number; h: number };
-}) {
+function GridBackground({ size }: { size: { w: number; h: number } }) {
   const lines: React.ReactElement[] = [];
   const step = 40;
   for (let x = 0; x <= size.w; x += step) {
@@ -238,11 +240,7 @@ function DriverMarker({ rotation = 0 }: { rotation?: number }) {
       <div className="absolute -inset-2 -z-10 animate-pulse-soft rounded-full bg-status-en-route/30" />
       <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
         <circle cx="18" cy="18" r="18" fill="var(--status-en-route)" />
-        <path
-          d="M18 8 L23 16 L18 14 L13 16 Z"
-          fill="white"
-          transform={`rotate(${rotation} 18 18)`}
-        />
+        <path d="M18 8 L23 16 L18 14 L13 16 Z" fill="white" />
         <circle cx="18" cy="18" r="5" fill="white" />
       </svg>
     </div>
@@ -283,7 +281,7 @@ const MapView = React.forwardRef<HTMLDivElement, MapViewProps>(function MapView(
   return <MockMapCanvas {...props} />;
 });
 
-type MapboxGL = typeof import("mapbox-gl");
+type MapboxGL = typeof import("mapbox-gl").default;
 
 const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function MapboxMap(
   { center = DEFAULT_MAP_CENTER, zoom = 14, markers = [], route = [], className, followMarkerId, showAttribution = true },
@@ -294,23 +292,28 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
   const glRef = React.useRef<MapboxGL | null>(null);
   const markerRefs = React.useRef<import("mapbox-gl").Marker[]>([]);
   const [ready, setReady] = React.useState(false);
+  const { resolvedTheme } = useTheme();
+  const mode = resolvedTheme === "dark" ? "dark" : "light";
+  const appliedStyle = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      const mapboxgl = await import("mapbox-gl");
+      const mapboxgl = (await import("mapbox-gl")).default;
       if (!containerRef.current || cancelled) return;
       glRef.current = mapboxgl;
-      mapboxgl.default.accessToken = MAPBOX_TOKEN!;
+      mapboxgl.accessToken = MAPBOX_TOKEN!;
+      appliedStyle.current = MAP_STYLES[mode];
       const map = new mapboxgl.Map({
         container: containerRef.current,
-        style: "mapbox://styles/mapbox/light-v11",
+        style: appliedStyle.current,
         center: [center.lng, center.lat],
         zoom,
         attributionControl: showAttribution,
       });
       mapRef.current = map;
       map.on("load", () => setReady(true));
+      map.on("error", (e) => console.error("Mapbox error:", e.error));
     })();
     return () => {
       cancelled = true;
@@ -325,9 +328,20 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
   }, []);
 
   React.useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const next = MAP_STYLES[mode];
+    if (appliedStyle.current === next) return;
+    appliedStyle.current = next;
+    setReady(false);
+    map.once("style.load", () => setReady(true));
+    map.setStyle(next);
+  }, [mode, ready]);
+
+  React.useEffect(() => {
     if (!ready || !mapRef.current) return;
     mapRef.current.easeTo({ center: [center.lng, center.lat], duration: 800 });
-  }, [center, ready]);
+  }, [center.lat, center.lng, ready]);
 
   React.useEffect(() => {
     if (!ready || !mapRef.current) return;
@@ -344,6 +358,7 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
       const src = map.getSource("route") as import("mapbox-gl").GeoJSONSource | undefined;
       if (src) {
         src.setData(geo);
+        map.setPaintProperty("route", "line-color", ROUTE_COLORS[mode]);
       } else {
         map.addSource("route", { type: "geojson", data: geo });
         map.addLayer({
@@ -352,7 +367,7 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
           source: "route",
           layout: { "line-cap": "round", "line-join": "round" },
           paint: {
-            "line-color": "#111",
+            "line-color": ROUTE_COLORS[mode],
             "line-width": 5,
             "line-opacity": 0.85,
           },
@@ -362,7 +377,7 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
       map.removeLayer("route");
       if (map.getSource("route")) map.removeSource("route");
     }
-  }, [route, ready]);
+  }, [route, ready, mode]);
 
   React.useEffect(() => {
     if (!ready || !mapRef.current || !glRef.current) return;
@@ -373,9 +388,14 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
       el.style.width = "20px";
       el.style.height = "20px";
       el.style.borderRadius = "50%";
-      el.style.background = m.kind === "driver" ? "#3b82f6" : m.kind === "pickup" ? "#10b981" : "#ef4444";
-      el.style.border = "2px solid white";
-      el.style.boxShadow = "0 1px 4px rgba(0,0,0,0.25)";
+      el.style.background =
+        m.kind === "driver"
+          ? "var(--status-en-route)"
+          : m.kind === "pickup"
+            ? "var(--status-online)"
+            : "var(--destructive)";
+      el.style.border = "2px solid var(--background)";
+      el.style.boxShadow = "0 1px 6px rgb(0 0 0 / 0.3)";
       return new mapboxgl.Marker(el)
         .setLngLat([m.position.lng, m.position.lat])
         .addTo(mapRef.current!);
@@ -395,7 +415,7 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
 
   return (
     <div ref={ref} className={cn("relative h-full w-full", className)}>
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} className="h-full w-full" />
       {showAttribution && (
         <div className="pointer-events-none absolute right-3 bottom-3 text-[10px] text-muted-foreground/80">
           © Mapbox © OpenStreetMap

@@ -22,7 +22,7 @@ export function ConnectivityIndicator({ className }: { className?: string }) {
     },
     reconnecting: {
       icon: RefreshCwIcon,
-      label: "Reconnecting…",
+      label: "Connecting…",
       tone: "text-status-searching",
     },
     offline: {

@@ -228,13 +228,19 @@ export function useSocket(handlers: SocketEventHandlers = {}): SocketState {
         setStatus("disconnected");
         setConnectivity("offline");
       };
-      const onReconnectAttempt = () => incrementAttempts();
+      const onReconnectAttempt = () => {
+        incrementAttempts();
+        setConnectivity("reconnecting");
+      };
+      const onConnectError = () => setConnectivity("reconnecting");
       real.on("connect", onConnect);
       real.on("disconnect", onDisconnect);
+      real.on("connect_error", onConnectError);
       real.on("reconnect_attempt", onReconnectAttempt);
       unsubs.push(() => {
         real.off("connect", onConnect);
         real.off("disconnect", onDisconnect);
+        real.off("connect_error", onConnectError);
         real.off("reconnect_attempt", onReconnectAttempt);
       });
     }

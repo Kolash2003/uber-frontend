@@ -1,7 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { SearchIcon, MapPinIcon, HomeIcon, BriefcaseIcon, ClockIcon } from "lucide-react";
+import {
+  SearchIcon,
+  MapPinIcon,
+  HomeIcon,
+  BriefcaseIcon,
+  ClockIcon,
+  ArrowRightIcon,
+  Loader2Icon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBookingStore } from "@/stores/booking-store";
 import { useEffect, useRef, useState } from "react";
@@ -12,7 +20,6 @@ import type { Address } from "@/types";
 import { DEFAULT_MAP_CENTER } from "@/lib/mock/data";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
-import { cn } from "cn";
 
 const MapView = dynamic(
   () => import("@/components/shared/map-view").then((m) => m.default),
@@ -77,129 +84,115 @@ export default function RiderHomePage() {
     };
   }, [debounced]);
 
-  const visibleResults = debounced && debounced.length >= 2 ? results : [];
-  const recent = savedPlaces.filter((p) => p.id.startsWith("recent"));
+  const showResults = debounced.length >= 2;
+  const visibleResults = showResults ? results : [];
 
   return (
-    <div className="relative h-[calc(100dvh-3rem)]">
+    <div className="relative h-map">
       <div className="absolute inset-0">
         <MapView center={homeCenter} markers={[]} />
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-4">
-        <div className="pointer-events-auto mx-auto max-w-md space-y-2 rounded-2xl bg-background/95 p-3 shadow-xl ring-1 ring-foreground/10 backdrop-blur">
-          <button
-            type="button"
-            className="flex w-full items-center gap-3 rounded-xl bg-secondary/60 px-3 py-3 text-left text-sm transition-colors hover:bg-secondary"
-            onClick={() => {
-              if (dropoff) {
-                router.push("/book");
-              } else {
-                inputRef.current?.focus();
-              }
-            }}
-          >
-            <SearchIcon className="size-5 text-muted-foreground" />
-            <span className="text-muted-foreground">Where to?</span>
-          </button>
+        <div className="pointer-events-auto mx-auto max-w-md panel p-3">
+          <div className="flex items-center gap-2 rounded-xl bg-secondary/60 px-3 transition-colors focus-within:bg-secondary focus-within:ring-2 focus-within:ring-ring/50">
+            <SearchIcon className="size-5 shrink-0 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Where to?"
+              className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+              aria-label="Search destination"
+            />
+            {searching && <Loader2Icon className="size-4 shrink-0 animate-spin text-muted-foreground" />}
+          </div>
 
-          <div className="flex items-start gap-2 px-1 text-xs text-muted-foreground">
-            <MapPinIcon className="mt-0.5 size-3.5 text-status-online" />
+          <div className="flex items-start gap-2 px-1 pt-2 text-xs text-muted-foreground">
+            <MapPinIcon className="mt-0.5 size-3.5 shrink-0 text-status-online" />
             <span className="truncate">{user?.lastAddress ?? "Current location"}</span>
           </div>
 
-          {(query === "" || debounced === "") && (
-            <div className="space-y-0.5 pt-1">
-              {savedPlaces.slice(0, 3).map((p) => {
-                const Icon = p.id === "home" ? HomeIcon : p.id === "work" ? BriefcaseIcon : ClockIcon;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-secondary"
-                    onClick={() => {
-                      setDropoff(p);
-                      router.push("/book");
-                    }}
-                  >
-                    <Icon className="size-4 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">{p.label}</div>
-                      <div className="truncate text-xs text-muted-foreground">{p.primary}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {(query !== "" && debounced !== "") && (
-            <div className="space-y-0.5 pt-1">
-              {searching && (
-                <div className="px-2 py-2 text-xs text-muted-foreground">Searching…</div>
-              )}
+          {showResults ? (
+            <div className="max-h-64 space-y-0.5 overflow-y-auto pt-1">
               {!searching && visibleResults.length === 0 && (
-                <div className="px-2 py-2 text-xs text-muted-foreground">No matches</div>
+                <div className="px-2 py-3 text-xs text-muted-foreground">
+                  No places match &ldquo;{debounced}&rdquo;
+                </div>
               )}
               {visibleResults.map((r) => (
-                <button
+                <PlaceRow
                   key={r.id}
-                  type="button"
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-secondary"
-                  )}
+                  icon={MapPinIcon}
+                  title={r.primary}
+                  subtitle={r.secondary}
                   onClick={() => {
                     setDropoff(r);
                     setQuery("");
                     router.push("/book");
                   }}
-                >
-                  <MapPinIcon className="size-4 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <div className="truncate font-medium">{r.primary}</div>
-                    {r.secondary && (
-                      <div className="truncate text-xs text-muted-foreground">{r.secondary}</div>
-                    )}
-                  </div>
-                </button>
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-0.5 pt-1">
+              {savedPlaces.slice(0, 3).map((p) => (
+                <PlaceRow
+                  key={p.id}
+                  icon={p.id === "home" ? HomeIcon : p.id === "work" ? BriefcaseIcon : ClockIcon}
+                  title={p.label}
+                  subtitle={p.primary}
+                  onClick={() => {
+                    setDropoff(p);
+                    router.push("/book");
+                  }}
+                />
               ))}
             </div>
           )}
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 px-4 pb-safe">
-        <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-2 rounded-full bg-background/95 p-2 shadow-xl ring-1 ring-foreground/10 backdrop-blur">
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search a destination"
-            className="flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
-            aria-label="Search destination"
-          />
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              if (dropoff) {
-                router.push("/book");
-              } else {
-                inputRef.current?.focus();
-              }
-            }}
-          >
-            <SearchIcon />
-          </Button>
-        </div>
-      </div>
-
       {dropoff && (
-        <div className="pointer-events-none absolute right-4 top-20 z-10 max-w-xs rounded-full bg-foreground px-3 py-1 text-xs text-background shadow-lg">
-          → {dropoff.primary}
+        <div className="absolute inset-x-0 bottom-4 z-10 px-4 pb-safe">
+          <Button
+            size="lg"
+            className="mx-auto flex w-full max-w-md shadow-xl"
+            onClick={() => router.push("/book")}
+          >
+            <span className="truncate">Continue to {dropoff.primary}</span>
+            <ArrowRightIcon />
+          </Button>
         </div>
       )}
     </div>
+  );
+}
+
+function PlaceRow({
+  icon: Icon,
+  title,
+  subtitle,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm outline-none transition-colors hover:bg-secondary focus-visible:bg-secondary focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      <Icon className="size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <div className="truncate font-medium">{title}</div>
+        {subtitle && <div className="truncate text-xs text-muted-foreground">{subtitle}</div>}
+      </div>
+      <ArrowRightIcon className="ml-auto size-3.5 shrink-0 text-muted-foreground/60" />
+    </button>
   );
 }

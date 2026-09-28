@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +23,12 @@ import { USE_MOCK } from "@/lib/api/client";
 import { useElapsed } from "@/hooks/use-elapsed";
 import { Loader2Icon, ShieldAlertIcon, MessageSquareIcon } from "lucide-react";
 import { toast } from "sonner";
-import type { LatLng, TripStatus } from "@/types";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { FareBreakdown } from "@/components/shared/fare-breakdown";
+import { ArrowLeftIcon } from "lucide-react";
+import type { LatLng, Trip, TripStatus } from "@/types";
 import { cn } from "cn";
 
 const MapView = dynamic(
@@ -59,14 +64,18 @@ export default function TripPage() {
   const { data: serverTrip } = useTripStatus(params.tripId);
   const cancelTrip = useCancelTrip(params.tripId);
 
+  const prevStatus = useRef<TripStatus | null>(null);
   useEffect(() => {
-    if (trip?.status === "completed") {
+    if (trip?.id !== params.tripId) return;
+    const previous = prevStatus.current;
+    prevStatus.current = trip.status;
+    if (previous && previous !== "completed" && trip.status === "completed") {
       router.replace(`/trip/${params.tripId}/receipt`);
     }
-  }, [trip?.status, router, params.tripId]);
+  }, [trip?.id, trip?.status, router, params.tripId]);
 
   useEffect(() => {
-    if (trip) return;
+    if (trip?.id === params.tripId) return;
     if (serverTrip) {
       useActiveTripStore.getState().setTrip(serverTrip);
     } else if (USE_MOCK) {
@@ -125,6 +134,10 @@ export default function TripPage() {
     );
   }
 
+  if (trip.status === "completed" || trip.status === "cancelled") {
+    return <TripSummary trip={trip} />;
+  }
+
   const driver = trip.driver;
   const markers: { id: string; position: LatLng; kind: "pickup" | "dropoff" | "driver" }[] = [
     { id: "pickup", position: trip.pickup.location, kind: "pickup" as const },
@@ -151,7 +164,7 @@ export default function TripPage() {
   else if (driverLocation) route.push(driverLocation, trip.pickup.location);
 
   return (
-    <div className="relative h-[calc(100dvh-3rem)]">
+    <div className="relative h-map">
       <div
         className="trip-status-announcer"
         aria-live="polite"
@@ -166,10 +179,10 @@ export default function TripPage() {
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-3">
-        <div className="pointer-events-auto mx-auto max-w-md rounded-2xl bg-background/95 p-3 shadow-xl ring-1 ring-foreground/10 backdrop-blur">
+        <div className="pointer-events-auto mx-auto max-w-md panel p-3">
           <div className="flex items-center justify-between">
             <StatusBadge status={trip.status} />
-            {eta != null && trip.status !== "completed" && trip.status !== "cancelled" && (
+            {eta != null && (
               <div className="text-right text-xs text-muted-foreground">
                 <div>ETA</div>
                 <div className="font-mono text-sm font-semibold text-foreground tabular-nums">
@@ -206,7 +219,7 @@ export default function TripPage() {
           )}
 
           <div className={cn(
-            "flex items-center gap-2 rounded-2xl bg-background/95 p-2 shadow-xl ring-1 ring-foreground/10 backdrop-blur",
+            "flex items-center gap-2 panel p-2",
             !driver && "justify-center"
           )}>
             <AlertDialog>
@@ -242,6 +255,118 @@ export default function TripPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TripSummary({ trip }: { trip: Trip }) {
+  const when = trip.completedAt ?? trip.startedAt ?? trip.createdAt;
+  const route = trip.routePolyline?.length
+    ? trip.routePolyline
+    : [trip.pickup.location, trip.dropoff.location];
+
+  return (
+    <div className="mx-auto max-w-md px-4 py-6 pb-safe">
+      <header className="mb-4 flex items-center gap-3">
+        <Button variant="ghost" size="icon-sm" onClick={() => history.back()} aria-label="Back">
+          <ArrowLeftIcon />
+        </Button>
+        <h1 className="text-base font-semibold">Trip details</h1>
+      </header>
+
+      <div className="mb-4 h-48 overflow-hidden rounded-2xl ring-1 ring-foreground/10">
+        <MapView
+          markers={[
+            { id: "pickup", position: trip.pickup.location, kind: "pickup" },
+            { id: "dropoff", position: trip.dropoff.location, kind: "dropoff" },
+          ]}
+          route={route}
+          showAttribution={false}
+        />
+      </div>
+
+      <Card size="sm" className="mb-4">
+        <CardContent className="space-y-4 p-4">
+          <div className="flex items-center justify-between">
+            <StatusBadge status={trip.status} />
+            {when && (
+              <span className="text-xs text-muted-foreground">
+                {new Date(when).toLocaleString()}
+              </span>
+            )}
+          </div>
+
+          <div className="flex gap-3">
+            <div className="mt-1 flex flex-col items-center">
+              <span className="size-2 rounded-full bg-status-online" />
+              <span className="my-1 w-px flex-1 bg-border" />
+              <span className="size-2 rounded-full bg-destructive" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">From</div>
+                <div className="truncate text-sm font-medium">{trip.pickup.primary}</div>
+                {trip.pickup.secondary && (
+                  <div className="truncate text-xs text-muted-foreground">{trip.pickup.secondary}</div>
+                )}
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">To</div>
+                <div className="truncate text-sm font-medium">{trip.dropoff.primary}</div>
+                {trip.dropoff.secondary && (
+                  <div className="truncate text-xs text-muted-foreground">{trip.dropoff.secondary}</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <Stat label="Ride" value={trip.rideType} />
+            <Stat
+              label={trip.distanceKm != null ? "Distance" : "Est. distance"}
+              value={
+                trip.distanceKm != null
+                  ? `${(trip.distanceKm * 0.621371).toFixed(1)} mi`
+                  : `${trip.fare.estimatedDistanceMiles.toFixed(1)} mi`
+              }
+            />
+            <Stat
+              label={trip.durationMinutes != null ? "Duration" : "Est. duration"}
+              value={`${trip.durationMinutes ?? trip.fare.estimatedDurationMinutes} min`}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {trip.driver && (
+        <DriverInfoCard
+          driver={trip.driver}
+          vehicle={trip.driver.vehicle}
+          className="mb-4"
+        />
+      )}
+
+      <FareBreakdown estimate={trip.fare} tip={trip.tip} className="mb-4" />
+
+      {trip.status === "completed" && (
+        <Button variant="secondary" size="lg" className="mb-2 w-full" nativeButton={false} render={<Link href={`/trip/${trip.id}/receipt`} />}>
+          View receipt
+        </Button>
+      )}
+      <Button size="lg" className="w-full" nativeButton={false} render={<Link href="/book" />}>
+        Book again
+      </Button>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-sm font-medium capitalize">{value}</div>
     </div>
   );
 }

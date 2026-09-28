@@ -1,15 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect } from "react";
+import { Home, History, User2 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useSyncSession } from "@/hooks/use-sync-session";
 import { useSocket } from "@/lib/socket/client";
 import { useActiveTripStore } from "@/stores/active-trip-store";
-import { RiderBottomNav } from "@/components/shared/rider-bottom-nav";
-import { ConnectivityIndicator } from "@/components/shared/connectivity-indicator";
+import { AppShell, type NavTab } from "@/components/shared/app-shell";
 import { LocationPermissionDialog } from "@/components/shared/location-permission-dialog";
 import { useDriverMarkerInterpolator } from "@/hooks/use-driver-marker-interpolator";
+
+const TABS: readonly NavTab[] = [
+  { href: "/home", label: "Home", icon: Home },
+  { href: "/trips", label: "Trips", icon: History },
+  { href: "/profile", label: "Profile", icon: User2 },
+];
 
 export default function RiderLayout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -41,17 +46,9 @@ export default function RiderLayout({ children }: { children: React.ReactNode })
   });
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <Link href="/home" className="flex items-center gap-2 text-sm font-semibold">
-          <span className="grid size-7 place-items-center rounded-md bg-foreground text-background text-xs">R</span>
-          Ride
-        </Link>
-        <ConnectivityIndicator />
-      </header>
-      <main className="flex-1">{children}</main>
-      <RiderBottomNav />
+    <AppShell wordmark="Ride" homeHref="/home" tabs={TABS} navLabel="Rider navigation">
+      {children}
       <LocationPermissionDialog />
-    </div>
+    </AppShell>
   );
 }

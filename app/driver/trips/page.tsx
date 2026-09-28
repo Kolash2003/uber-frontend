@@ -3,7 +3,8 @@
 import { useTrips } from "@/hooks/use-trip-queries";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StarIcon } from "lucide-react";
+import { StarIcon, HistoryIcon } from "lucide-react";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 export default function DriverTripsPage() {
   const { data: trips = [], isLoading } = useTrips();
@@ -22,9 +23,17 @@ export default function DriverTripsPage() {
           ))}
         </div>
       ) : trips.length === 0 ? (
-        <div className="grid place-items-center rounded-xl border border-dashed py-12 text-sm text-muted-foreground">
-          No trips yet
-        </div>
+        <Empty className="border py-10">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <HistoryIcon />
+            </EmptyMedia>
+            <EmptyTitle>No trips yet</EmptyTitle>
+            <EmptyDescription>
+              Go online from the dashboard to start receiving ride requests.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="space-y-2">
           {trips.map((t) => (

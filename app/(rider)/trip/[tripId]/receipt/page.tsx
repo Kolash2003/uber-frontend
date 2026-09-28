@@ -107,7 +107,7 @@ export default function ReceiptPage() {
                 className={cn(
                   "rounded-lg border px-2 py-2 text-sm font-medium transition-colors",
                   tip === t
-                    ? "border-foreground bg-foreground/[0.04]"
+                    ? "border-brand bg-brand-subtle ring-1 ring-brand/25"
                     : "border-border hover:bg-secondary/50"
                 )}
                 onClick={() => setTip(t)}

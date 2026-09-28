@@ -10,7 +10,6 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon, MessageSquareIcon, PhoneIcon, ShieldAlertIcon, SquareCheckIcon, FlagIcon } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "cn";
 import type { TripStatus } from "@/types";
 
 const MapView = dynamic(
@@ -41,7 +40,7 @@ export default function DriverTripPage() {
   const { data: serverTrip } = useTripStatus(params.tripId);
 
   useEffect(() => {
-    if (trip) return;
+    if (trip?.id === params.tripId) return;
     if (serverTrip) {
       setTrip(serverTrip);
     } else if (USE_MOCK) {
@@ -98,7 +97,7 @@ export default function DriverTripPage() {
   }
 
   return (
-    <div className="relative h-[calc(100dvh-3rem)]">
+    <div className="relative h-map">
       <div className="absolute inset-0">
         <MapView
           markers={[
@@ -122,20 +121,20 @@ export default function DriverTripPage() {
         <Button
           variant="secondary"
           size="icon-sm"
-          className="pointer-events-auto rounded-full bg-background/95 shadow-md ring-1 ring-foreground/10 backdrop-blur"
+          className="pointer-events-auto panel-sm"
           onClick={() => router.replace("/driver/dashboard")}
           aria-label="Back"
         >
           <ArrowLeftIcon />
         </Button>
-        <div className="pointer-events-auto rounded-full bg-background/95 px-3 py-1.5 shadow-md ring-1 ring-foreground/10 backdrop-blur">
+        <div className="pointer-events-auto panel-sm px-3 py-1.5">
           <StatusBadge status={trip.status} />
         </div>
         <div className="w-9" />
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 space-y-2 p-4 pb-safe">
-        <div className="pointer-events-auto mx-auto max-w-md space-y-3 rounded-2xl bg-background/95 p-3 shadow-xl ring-1 ring-foreground/10 backdrop-blur">
+        <div className="pointer-events-auto mx-auto max-w-md space-y-3 panel p-3">
           <div className="text-sm font-semibold">
             {trip.status === "in_progress" ? "Heading to" : "Pickup"}
           </div>

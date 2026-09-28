@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRightIcon, MapPinIcon, NavigationIcon, ShieldCheckIcon } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 
 export default function MarketingPage() {
   return (
@@ -19,10 +20,13 @@ export default function MarketingPage() {
 
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 pt-6">
         <div className="flex items-center gap-2 text-base font-semibold">
-          <span className="grid size-8 place-items-center rounded-lg bg-foreground text-background">R</span>
+          <span className="grid size-8 place-items-center rounded-lg bg-brand font-bold text-brand-foreground shadow-sm">
+            R
+          </span>
           Ride
         </div>
         <nav className="flex items-center gap-1.5">
+          <ThemeToggle />
           <Link href="/login" className={buttonVariants({ variant: "ghost", size: "sm" })}>
             Sign in
           </Link>
@@ -40,7 +44,7 @@ export default function MarketingPage() {
             Live in your city
           </div>
           <h1 className="text-4xl font-semibold tracking-tight text-balance md:text-6xl">
-            Get there. <span className="text-muted-foreground">Live.</span>
+            Get there. <span className="text-brand-accent">Live.</span>
           </h1>
           <p className="max-w-md text-base text-muted-foreground md:text-lg">
             Request a ride in seconds, watch your driver approach in real time, and pay in-app.
@@ -48,12 +52,15 @@ export default function MarketingPage() {
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/signup" className={buttonVariants({ size: "lg" })}>
-                Sign up to ride
-                <ArrowRightIcon />
-              </Link>
-              <Link href="/signup?role=driver" className={buttonVariants({ size: "lg", variant: "outline" })}>
-                Drive with us
-              </Link>
+              Sign up to ride
+              <ArrowRightIcon />
+            </Link>
+            <Link
+              href="/signup?role=driver"
+              className={buttonVariants({ size: "lg", variant: "outline" })}
+            >
+              Drive with us
+            </Link>
           </div>
 
           <div className="grid grid-cols-3 gap-2 pt-6 text-xs text-muted-foreground md:gap-6 md:text-sm">
@@ -64,7 +71,7 @@ export default function MarketingPage() {
         </div>
 
         <div className="relative">
-          <div className="absolute -inset-6 -z-10 rounded-3xl bg-gradient-to-tr from-status-en-route/15 to-status-arrived/20 blur-2xl" />
+          <div className="absolute -inset-6 -z-10 rounded-3xl bg-gradient-to-tr from-brand/20 to-status-arrived/20 blur-2xl" />
           <div className="rounded-3xl bg-card p-3 ring-1 ring-foreground/10 shadow-2xl">
             <div className="grid grid-cols-3 gap-2 rounded-2xl bg-muted/40 p-3">
               <div className="col-span-2 space-y-2">
@@ -92,8 +99,8 @@ export default function MarketingPage() {
               <div className="col-span-1 rounded-xl bg-foreground/5 p-2">
                 <div className="grid h-full place-items-center text-center text-muted-foreground">
                   <div>
-                    <div className="mx-auto mb-1 grid size-10 place-items-center rounded-full bg-status-en-route/15">
-                      <NavigationIcon className="size-5 text-status-en-route" />
+                    <div className="mx-auto mb-1 grid size-10 place-items-center rounded-full bg-brand/15">
+                      <NavigationIcon className="size-5 text-brand-accent" />
                     </div>
                     <div className="text-xs font-medium text-foreground">4:32</div>
                     <div className="text-[10px]">away</div>
@@ -126,7 +133,7 @@ function FeaturePill({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className="size-4 shrink-0 text-status-en-route" />
+      <Icon className="size-4 shrink-0 text-brand-accent" />
       <span>{label}</span>
     </div>
   );

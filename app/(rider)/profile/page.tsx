@@ -5,7 +5,6 @@ import { useSavedPlaces, usePaymentMethods, useTrips } from "@/hooks/use-trip-qu
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { ArrowRightIcon, BriefcaseIcon, CreditCardIcon, HomeIcon, LogOutIcon, MapPinIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";

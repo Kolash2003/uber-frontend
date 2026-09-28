@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -47,8 +47,12 @@
   --color-status-in-progress: var(--status-in-progress);
   --color-status-completed: var(--status-completed);
   --color-status-cancelled: var(--status-cancelled);
-  --color-online: var(--online);
-  --color-offline: var(--offline);
+  --color-status-online: var(--status-online);
+  --color-status-offline: var(--status-offline);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-subtle: var(--brand-subtle);
   --color-map-route: var(--map-route);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -75,9 +79,9 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.898 0 0);
+  --input: oklch(0.898 0 0);
+  --ring: oklch(0.55 0.115 192);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -101,9 +105,16 @@
   --status-in-progress: oklch(0.62 0.18 195);
   --status-completed: oklch(0.62 0.16 150);
   --status-cancelled: oklch(0.577 0.245 27.325);
-  --online: oklch(0.65 0.18 150);
-  --offline: oklch(0.708 0 0);
+  --status-online: oklch(0.65 0.18 150);
+  --status-offline: oklch(0.708 0 0);
   --map-route: oklch(0.205 0 0);
+
+  --brand: oklch(0.55 0.115 192);
+  --brand-foreground: oklch(0.99 0 0);
+  --brand-accent: oklch(0.49 0.115 192);
+  --brand-subtle: oklch(0.96 0.02 192);
+
+  --header-h: 3.25rem;
 }
 
 .dark {
@@ -122,9 +133,9 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 14%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.78 0.12 190);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -147,9 +158,14 @@
   --status-in-progress: oklch(0.72 0.18 195);
   --status-completed: oklch(0.72 0.16 150);
   --status-cancelled: oklch(0.704 0.191 22.216);
-  --online: oklch(0.72 0.18 150);
-  --offline: oklch(0.708 0 0);
+  --status-online: oklch(0.72 0.18 150);
+  --status-offline: oklch(0.708 0 0);
   --map-route: oklch(0.985 0 0);
+
+  --brand: oklch(0.78 0.12 190);
+  --brand-foreground: oklch(0.2 0.03 190);
+  --brand-accent: oklch(0.82 0.11 190);
+  --brand-subtle: oklch(0.27 0.035 190);
 }
 
 @layer base {
@@ -174,6 +190,19 @@
 }
 
 @layer components {
+  .panel {
+    @apply rounded-2xl bg-background/95 shadow-xl ring-1 ring-foreground/10 backdrop-blur-md;
+  }
+
+  .panel-sm {
+    @apply rounded-full bg-background/95 shadow-md ring-1 ring-foreground/10 backdrop-blur-md;
+  }
+
+  /* Fills the app shell's <main>, which already excludes the header and nav. */
+  .h-map {
+    height: 100%;
+  }
+
   .trip-status-announcer {
     position: absolute;
     width: 1px;

@@ -113,7 +113,7 @@ export default function BookPage() {
   }
 
   return (
-    <div className="relative h-[calc(100dvh-3rem)]">
+    <div className="relative h-map">
       <div className="absolute inset-0">
         <MapView
           center={pickup?.location}
@@ -129,7 +129,7 @@ export default function BookPage() {
           type="button"
           variant="secondary"
           size="icon-sm"
-          className="pointer-events-auto rounded-full bg-background/95 shadow-md ring-1 ring-foreground/10 backdrop-blur"
+          className="pointer-events-auto panel-sm"
           onClick={() => router.back()}
           aria-label="Back"
         >
@@ -179,7 +179,7 @@ export default function BookPage() {
                           className={cn(
                             "flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors",
                             selected
-                              ? "border-foreground bg-foreground/[0.04]"
+                              ? "border-brand bg-brand-subtle ring-1 ring-brand/25"
                               : "border-border hover:bg-secondary/50"
                           )}
                         >
@@ -228,7 +228,7 @@ export default function BookPage() {
                       className={cn(
                         "flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors",
                         paymentMethodId === pm.id
-                          ? "border-foreground bg-foreground/[0.04]"
+                          ? "border-brand bg-brand-subtle ring-1 ring-brand/25"
                           : "border-border hover:bg-secondary/50"
                       )}
                     >
@@ -352,13 +352,13 @@ function Stepper({ currentStep }: { currentStep: 1 | 2 | 3 }) {
             key={label}
             className={cn(
               "flex items-center gap-2",
-              active ? "text-foreground" : done ? "text-status-completed" : "text-muted-foreground"
+              active ? "text-brand-accent" : done ? "text-status-completed" : "text-muted-foreground"
             )}
           >
             <span
               className={cn(
                 "grid size-5 place-items-center rounded-full text-[10px] font-semibold",
-                active && "bg-foreground text-background",
+                active && "bg-brand text-brand-foreground",
                 done && "bg-status-completed text-background",
                 !active && !done && "bg-secondary"
               )}

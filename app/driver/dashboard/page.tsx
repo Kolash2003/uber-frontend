@@ -102,13 +102,13 @@ export default function DriverDashboardPage() {
   }, [isOnline, reportLocation, USE_MOCK]);
 
   return (
-    <div className="relative h-[calc(100dvh-3rem)]">
+    <div className="relative h-map">
       <div className="absolute inset-0">
         <MapView center={DEFAULT_MAP_CENTER} />
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 space-y-2 px-4 pt-3">
-        <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-background/95 p-3 shadow-xl ring-1 ring-foreground/10 backdrop-blur">
+        <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-3 panel p-3">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Status</div>
             <div className="text-sm font-semibold">{isOnline ? "Online" : "Offline"}</div>
