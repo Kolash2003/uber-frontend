@@ -10,6 +10,7 @@ import { useSavedPlaces } from "@/hooks/use-trip-queries";
 import { api } from "@/lib/api/client";
 import type { Address } from "@/types";
 import { DEFAULT_MAP_CENTER } from "@/lib/mock/data";
+import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
 
@@ -28,18 +29,25 @@ export default function RiderHomePage() {
   const setPickup = useBookingStore((s) => s.setPickup);
   const setDropoff = useBookingStore((s) => s.setDropoff);
   const dropoff = useBookingStore((s) => s.dropoff);
+  const user = useAuthStore((s) => s.user);
+
+  const hasCoords = Boolean(user?.hasLocation && user.lastLat != null && user.lastLng != null);
+  const homeLat = hasCoords ? (user!.lastLat as number) : DEFAULT_MAP_CENTER.lat;
+  const homeLng = hasCoords ? (user!.lastLng as number) : DEFAULT_MAP_CENTER.lng;
+  const homeCenter = { lat: homeLat, lng: homeLng };
 
   useEffect(() => {
-    if (!useBookingStore.getState().pickup) {
+    const existing = useBookingStore.getState().pickup;
+    if (!existing || existing.id === "current") {
       setPickup({
         id: "current",
         label: "Current location",
-        primary: "You",
-        secondary: "Current location",
-        location: DEFAULT_MAP_CENTER,
+        primary: user?.lastAddress ?? "You",
+        secondary: user?.lastAddress ?? "Current location",
+        location: { lat: homeLat, lng: homeLng },
       });
     }
-  }, [setPickup]);
+  }, [setPickup, homeLat, homeLng, user?.lastAddress]);
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Address[]>([]);
@@ -75,7 +83,7 @@ export default function RiderHomePage() {
   return (
     <div className="relative h-[calc(100dvh-3rem)]">
       <div className="absolute inset-0">
-        <MapView center={DEFAULT_MAP_CENTER} markers={[]} />
+        <MapView center={homeCenter} markers={[]} />
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-4">
@@ -97,7 +105,7 @@ export default function RiderHomePage() {
 
           <div className="flex items-start gap-2 px-1 text-xs text-muted-foreground">
             <MapPinIcon className="mt-0.5 size-3.5 text-status-online" />
-            <span className="truncate">Current location</span>
+            <span className="truncate">{user?.lastAddress ?? "Current location"}</span>
           </div>
 
           {(query === "" || debounced === "") && (

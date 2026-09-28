@@ -99,6 +99,15 @@ function LoginContent() {
           <FieldError>{form.formState.errors.password?.message}</FieldError>
         </Field>
 
+        <div className="-mt-2 flex justify-end">
+          <a
+            className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            href="/forgot-password"
+          >
+            Forgot password?
+          </a>
+        </div>
+
         <div className="mt-auto pt-6">
           <Button type="submit" size="lg" className="w-full" disabled={submitting}>
             {submitting ? (

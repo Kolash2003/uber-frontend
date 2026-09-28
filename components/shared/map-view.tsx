@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "cn";
 import type { LatLng } from "@/types";
 import { DEFAULT_MAP_CENTER } from "@/lib/mock/data";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 type Marker = {
   id: string;
@@ -282,45 +283,55 @@ const MapView = React.forwardRef<HTMLDivElement, MapViewProps>(function MapView(
   return <MockMapCanvas {...props} />;
 });
 
+type MapboxGL = typeof import("mapbox-gl");
+
 const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function MapboxMap(
-  { center = DEFAULT_MAP_CENTER, markers = [], route = [], className, followMarkerId, showAttribution = true },
+  { center = DEFAULT_MAP_CENTER, zoom = 14, markers = [], route = [], className, followMarkerId, showAttribution = true },
   ref
 ) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const mapRef = React.useRef<unknown>(null);
+  const mapRef = React.useRef<import("mapbox-gl").Map | null>(null);
+  const glRef = React.useRef<MapboxGL | null>(null);
+  const markerRefs = React.useRef<import("mapbox-gl").Marker[]>([]);
   const [ready, setReady] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
-    let map: import("mapbox-gl").Map | null = null;
     (async () => {
-      const mapboxgl = (await import("mapbox-gl")).default;
-      mapboxgl.accessToken = MAPBOX_TOKEN!;
+      const mapboxgl = await import("mapbox-gl");
       if (!containerRef.current || cancelled) return;
-      map = new mapboxgl.Map({
+      glRef.current = mapboxgl;
+      mapboxgl.default.accessToken = MAPBOX_TOKEN!;
+      const map = new mapboxgl.Map({
         container: containerRef.current,
         style: "mapbox://styles/mapbox/light-v11",
         center: [center.lng, center.lat],
-        zoom: 14,
+        zoom,
+        attributionControl: showAttribution,
       });
       mapRef.current = map;
       map.on("load", () => setReady(true));
     })();
     return () => {
       cancelled = true;
-      map?.remove();
+      markerRefs.current.forEach((m) => m.remove());
+      markerRefs.current = [];
+      mapRef.current?.remove();
+      mapRef.current = null;
+      glRef.current = null;
     };
+    // Map instance is created once; prop updates are applied in the effects below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   React.useEffect(() => {
     if (!ready || !mapRef.current) return;
-    const map = mapRef.current as import("mapbox-gl").Map;
-    map.flyTo({ center: [center.lng, center.lat], zoom: 14, duration: 800 });
+    mapRef.current.easeTo({ center: [center.lng, center.lat], duration: 800 });
   }, [center, ready]);
 
   React.useEffect(() => {
     if (!ready || !mapRef.current) return;
-    const map = mapRef.current as import("mapbox-gl").Map;
+    const map = mapRef.current;
     if (route.length > 1) {
       const geo = {
         type: "Feature" as const,
@@ -330,8 +341,8 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
           coordinates: route.map((p) => [p.lng, p.lat]),
         },
       };
-      const src = map.getSource("route") as unknown as { setData?: (d: unknown) => void };
-      if (src?.setData) {
+      const src = map.getSource("route") as import("mapbox-gl").GeoJSONSource | undefined;
+      if (src) {
         src.setData(geo);
       } else {
         map.addSource("route", { type: "geojson", data: geo });
@@ -347,13 +358,17 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
           },
         });
       }
+    } else if (map.getLayer("route")) {
+      map.removeLayer("route");
+      if (map.getSource("route")) map.removeSource("route");
     }
   }, [route, ready]);
 
   React.useEffect(() => {
-    if (!ready || !mapRef.current) return;
-    const map = mapRef.current as import("mapbox-gl").Map;
-    markers.forEach((m) => {
+    if (!ready || !mapRef.current || !glRef.current) return;
+    const mapboxgl = glRef.current;
+    markerRefs.current.forEach((m) => m.remove());
+    markerRefs.current = markers.map((m) => {
       const el = document.createElement("div");
       el.style.width = "20px";
       el.style.height = "20px";
@@ -361,9 +376,9 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
       el.style.background = m.kind === "driver" ? "#3b82f6" : m.kind === "pickup" ? "#10b981" : "#ef4444";
       el.style.border = "2px solid white";
       el.style.boxShadow = "0 1px 4px rgba(0,0,0,0.25)";
-      new (window as unknown as { mapboxgl: typeof import("mapbox-gl") }).mapboxgl.Marker(el)
+      return new mapboxgl.Marker(el)
         .setLngLat([m.position.lng, m.position.lat])
-        .addTo(map);
+        .addTo(mapRef.current!);
     });
   }, [markers, ready]);
 
@@ -371,7 +386,7 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
     if (!ready || !followMarkerId || !mapRef.current) return;
     const marker = markers.find((m) => m.id === followMarkerId);
     if (marker) {
-      (mapRef.current as import("mapbox-gl").Map).flyTo({
+      mapRef.current.flyTo({
         center: [marker.position.lng, marker.position.lat],
         zoom: 15,
       });
@@ -383,7 +398,7 @@ const MapboxMap = React.forwardRef<HTMLDivElement, MapViewProps>(function Mapbox
       <div ref={containerRef} className="absolute inset-0" />
       {showAttribution && (
         <div className="pointer-events-none absolute right-3 bottom-3 text-[10px] text-muted-foreground/80">
-          Mapbox
+          © Mapbox © OpenStreetMap
         </div>
       )}
     </div>

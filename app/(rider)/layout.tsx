@@ -8,6 +8,7 @@ import { useSocket } from "@/lib/socket/client";
 import { useActiveTripStore } from "@/stores/active-trip-store";
 import { RiderBottomNav } from "@/components/shared/rider-bottom-nav";
 import { ConnectivityIndicator } from "@/components/shared/connectivity-indicator";
+import { LocationPermissionDialog } from "@/components/shared/location-permission-dialog";
 import { useDriverMarkerInterpolator } from "@/hooks/use-driver-marker-interpolator";
 
 export default function RiderLayout({ children }: { children: React.ReactNode }) {
@@ -50,6 +51,7 @@ export default function RiderLayout({ children }: { children: React.ReactNode })
       </header>
       <main className="flex-1">{children}</main>
       <RiderBottomNav />
+      <LocationPermissionDialog />
     </div>
   );
 }

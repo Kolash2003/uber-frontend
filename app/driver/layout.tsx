@@ -10,6 +10,7 @@ import { useSocket } from "@/lib/socket/client";
 import { useDriverStatusStore } from "@/stores/driver-status-store";
 import { useDriverMarkerInterpolator } from "@/hooks/use-driver-marker-interpolator";
 import { ConnectivityIndicator } from "@/components/shared/connectivity-indicator";
+import { LocationPermissionDialog } from "@/components/shared/location-permission-dialog";
 import { cn } from "cn";
 
 const TABS = [
@@ -90,6 +91,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
           })}
         </ul>
       </nav>
+      <LocationPermissionDialog />
     </div>
   );
 }

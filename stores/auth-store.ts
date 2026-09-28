@@ -10,6 +10,10 @@ export type AuthUser = {
   email?: string;
   photoUrl?: string;
   role: UserRole;
+  hasLocation?: boolean;
+  lastLat?: number;
+  lastLng?: number;
+  lastAddress?: string;
 };
 
 type AuthState = {

@@ -13,6 +13,9 @@ type SessionUser = {
   lastName?: string | null;
   phoneNumber?: string | null;
   role?: string | null;
+  lastLat?: number | null;
+  lastLng?: number | null;
+  lastAddress?: string | null;
 };
 
 export function useSyncSession() {
@@ -31,6 +34,9 @@ export function useSyncSession() {
           return;
         }
 
+        const hasLocation =
+          sessionUser.lastLat != null && sessionUser.lastLng != null;
+
         store.setUser({
           id: sessionUser.id,
           firstName: sessionUser.firstName ?? "",
@@ -39,6 +45,10 @@ export function useSyncSession() {
           phoneNumber: sessionUser.phoneNumber ?? undefined,
           photoUrl: sessionUser.image ?? undefined,
           role: (sessionUser.role as UserRole) ?? "rider",
+          hasLocation,
+          lastLat: sessionUser.lastLat ?? undefined,
+          lastLng: sessionUser.lastLng ?? undefined,
+          lastAddress: sessionUser.lastAddress ?? undefined,
         });
       })
       .catch(() => {});

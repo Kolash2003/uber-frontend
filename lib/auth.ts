@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
-import { sendVerificationEmail } from "./email";
+import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -12,6 +12,14 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     minPasswordLength: 8,
+    resetPasswordTokenExpiresIn: 60 * 60,
+    sendResetPassword: async ({ user, url }) => {
+      await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name ?? "",
+        url,
+      });
+    },
   },
   emailVerification: {
     sendOnSignUp: true,
@@ -40,6 +48,9 @@ export const auth = betterAuth({
         defaultValue: "rider",
         input: true,
       },
+      lastLat: { type: "number", required: false, input: false },
+      lastLng: { type: "number", required: false, input: false },
+      lastAddress: { type: "string", required: false, input: false },
     },
   },
   session: {
